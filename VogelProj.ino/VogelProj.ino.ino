@@ -40,8 +40,6 @@ void setup() {
   nextMenu = false;
 
   menu = -1;
-
-  Serial.begin(9600);
   lcd.begin(16, 2);
 }
 
@@ -59,15 +57,11 @@ void loop() {
       digitalWrite(ledTimer, LOW);
       digitalWrite(ledStoppuhr, HIGH);
       lcd.clear();
-      lcd.setCursor(0, 1);
-      lcd.print("stoppuhr...");
       stoppuhr();
       break;
     case 1:
       lcd.clear();
-      lcd.setCursor(0, 1);
-      lcd.print("wecker...");
-      // wecker();
+      wecker();
       break;
     case 2:
       // timer();
@@ -82,7 +76,7 @@ boolean menuBtnPressed() {
   return analogRead(menuBtn) != 0;
 }
 
-boolean srtBtnPressed() {
+boolean setBtnPressed() {
   return analogRead(setBtn) != 0;
 }
 
@@ -90,36 +84,20 @@ void stoppuhr() {
   lcd.clear();
   lcd.setCursor(0, 1);
   lcd.print("00:00");
-  while (!srtBtnPressed()) {
+  while (!setBtnPressed()) {
     if (menuBtnPressed()) {
       return;
     }
+    delay(20);
   }
-  lcd.clear();
-  lcd.setCursor(0, 1);
-  lcd.print("loading...");
-  Serial.print(analogRead(stoppBtn));
+  boolean canceld = false;
   while (analogRead(stoppBtn) <= 0) {
-    for (int i = 0; i < 10; i++) {
-      if (analogRead(stoppBtn) > 0) {
-        timeM = 0;
-        timeS = 0;
-        nextMenu = true;
-        return;
-      } else if (srtBtnPressed()) {
-         
-      }
-      delay(100);
+    if (!canceld) {
+      time();
+      canceld = true;
+      delay(500);
     }
-    lcd.clear();
-    lcd.setCursor(0, 1);
-    timeS++;
-    if (timeS % 60 == 0) {
-      timeM = timeM + 1;
-      timeS = 0;
-    }
-
-    lcd.print(getMin() + ":" + getSek());
+    delay(100);
   }
   timeM = 0;
   timeS = 0;
@@ -127,6 +105,38 @@ void stoppuhr() {
   lcd.clear();
   lcd.setCursor(0, 1);
   lcd.print("00:00");
+}
+
+void time() {
+  int zTimes = 0;
+  while (analogRead(stoppBtn) <= 0) {
+    for (int i = 0; i < 10; i++) {
+      if (analogRead(stoppBtn) > 0) {
+        return;
+      } else if (setBtnPressed() && (timeS > 0 || timeM > 0) && zTimes < 2) {
+        if (zTimes == 0) {
+          lcd.setCursor(10, 0);
+        } else if (zTimes == 1) {
+          lcd.setCursor(10, 1);
+        }
+        lcd.print(getTime());
+        zTimes = zTimes + 1;
+      }
+      delay(100);
+    }
+    lcd.setCursor(0, 1);
+    timeS++;
+    if (timeS % 60 == 0) {
+      timeM = timeM + 1;
+      timeS = 0;
+    }
+
+    lcd.print(getTime());
+  }
+}
+
+String getTime() {
+  return getMin() + ":" + getSek();
 }
 
 String getSek() {
@@ -150,6 +160,16 @@ String getMin() {
     }
   } else {
     return String(timeM);
+  }
+}
+
+void wecker() {
+  lcd.setCursor(0, 0);
+  lcd.print("Wecker");
+  lcd.setCursor(0, 1);
+  lcd.print(getTime());
+  while (!setBtnPressed()) {
+    
   }
 }
 
