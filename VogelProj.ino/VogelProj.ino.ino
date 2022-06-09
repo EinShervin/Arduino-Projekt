@@ -1,25 +1,24 @@
 #include <LiquidCrystal.h>
 
+// LED Display
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-class Time {
-  public:
-    int firstDisplayNumber;
-    int lastDisplayNumber;
-};
-
+// Alle LEDS
 int ledStopwatch;
 int ledTimer;
 int ledAlarmClock;
 
+// Lautsprecher und Potentiometer
 int piezo;
 int potentio;
 
+// Buttons
 int menuBtn;
 int setBtn;
 int stopBtn;
 
+// Selektiertes Menü
 int menu;
 
 void setup() {
@@ -46,7 +45,7 @@ void setup() {
 }
 
 void loop() {
-  if (analogRead(menuBtn) > 0) {
+  if (menuBtnPressed()) {
     increaseMenuSelection();
   }
 
@@ -113,7 +112,7 @@ void stoppuhr() {
   switchLed();
   lcd.setCursor(0, 1);
   lcd.print("00:00");
-  if (checkIfMenuIsPressed()) {
+  if (checkIfBackToMenu()) {
     return;
   }
   boolean canceld = false;
@@ -189,10 +188,8 @@ void wecker() {
   int minutes;
   while (!setBtnPressed()) {
     lcd.setCursor(0, 1);
-    double result = analogRead(potentio);
-    double result2 = (result * 1.40664711);
-    hours = getHour(result2 / 60);
-    minutes = round(round(result2) % 60);
+    hours = getHour(getPotentioValue() / 60);
+    minutes = round(round(getPotentioValue()) % 60);
     lcd.print(getTime(hours, minutes));
     if (menuBtnPressed()) {
       return;
@@ -235,8 +232,12 @@ void end() {
       }
       if (i == 2) {
         lcd.setCursor(0, 1);
-        lcd.print("  :  ");
-      }
+        lcd.print(" ");
+        lcd.print(" ");
+        lcd.print(":");
+        lcd.print(" ");
+        lcd.print(" ");
+        }
       delay(100);
     }
   }
@@ -256,15 +257,13 @@ void timer() {
   lcd.print("Zeit setzen");
   lcd.setCursor(0, 1);
   lcd.print("00:00");
-  delay(500);
   int minutes;
   int seconds;
+  delay(500);
   while (!setBtnPressed()) {
     lcd.setCursor(0, 1);
-    double result = analogRead(potentio);
-    double result2 = (result * 1.40664711);
-    minutes = getHour(result2 / 60);
-    seconds = round(round(result2) % 60);
+    minutes = getHour(getPotentioValue() / 60);
+    seconds = round(round(getPotentioValue()) % 60);
     lcd.print(getTime(minutes, seconds));
     if (menuBtnPressed()) {
       return;
@@ -277,7 +276,12 @@ void timer() {
   }
 }
 
-boolean checkIfMenuIsPressed() {
+double getPotentioValue() {
+  // 24 Stunden * 60 Minuten - 1 sind 1439 Minuten, und um das auf die Auslesung des Potentiometers anzupassen wird 1439 durch 1023 geteilt
+  return (analogRead(potentio) * 1.40664711);
+}
+
+boolean checkIfBackToMenu() {
   delay(500);
   while (!setBtnPressed()) {
     if (menuBtnPressed()) {
