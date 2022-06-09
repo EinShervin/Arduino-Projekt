@@ -3,6 +3,12 @@
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
+class Time {
+  public:
+    int firstDisplayNumber;
+    int lastDisplayNumber;
+};
+
 int ledStopwatch;
 int ledTimer;
 int ledAlarmClock;
@@ -12,10 +18,7 @@ int potentio;
 
 int menuBtn;
 int setBtn;
-int stoppBtn;
-
-int timeS;
-int timeM;
+int stopBtn;
 
 int menu;
 
@@ -35,10 +38,7 @@ void setup() {
 
   menuBtn = 1;
   setBtn = 2;
-  stoppBtn = 3;
-
-  timeS = 0;
-  timeM = 0;
+  stopBtn = 3;
 
   menu = -1;
 
@@ -81,6 +81,10 @@ boolean setBtnPressed() {
   return analogRead(setBtn) != 0;
 }
 
+boolean stopBtnPressed() {
+  return analogRead(stopBtn) != 0;
+}
+
 void switchLed() {
   switch (menu) {
     case 0:
@@ -113,7 +117,7 @@ void stoppuhr() {
     return;
   }
   boolean canceld = false;
-  while (analogRead(stoppBtn) <= 0) {
+  while (!stopBtnPressed()) {
     if (!canceld) {
       time();
       canceld = true;
@@ -123,66 +127,54 @@ void stoppuhr() {
     }
     delay(100);
   }
-  timeM = 0;
-  timeS = 0;
   lcd.clear();
   lcd.setCursor(0, 1);
   lcd.print("00:00");
 }
 
 void time() {
-  int zTimes = 0;
-  while (analogRead(stoppBtn) <= 0) {
+  int intermediateTimes = 0;
+  int seconds = 0;
+  int minutes = 0;
+  while (!stopBtnPressed()) {
     for (int i = 0; i < 10; i++) {
-      if (analogRead(stoppBtn) > 0) {
+      if (stopBtnPressed()) {
         return;
-      } else if (setBtnPressed() && (timeS > 0 || timeM > 0) && zTimes < 2) {
-        if (zTimes == 0) {
+      } else if (setBtnPressed() && (seconds > 0 || minutes > 0) && intermediateTimes < 2) {
+        if (intermediateTimes == 0) {
           lcd.setCursor(10, 0);
-        } else if (zTimes == 1) {
+        } else if (intermediateTimes == 1) {
           lcd.setCursor(10, 1);
         }
-        lcd.print(getTime());
-        zTimes = zTimes + 1;
+        lcd.print(getTime(minutes, seconds));
+        intermediateTimes = intermediateTimes + 1;
       }
       delay(100);
     }
     lcd.setCursor(0, 1);
-    timeS++;
-    if (timeS % 60 == 0) {
-      timeM = timeM + 1;
-      timeS = 0;
+    seconds++;
+    if (seconds % 60 == 0) {
+      minutes = minutes + 1;
+      seconds = 0;
     }
 
-    lcd.print(getTime());
+    lcd.print(getTime(minutes, seconds));
   }
 }
 
-String getTime() {
-  return getMin() + ":" + getSek();
+String getTime(int firstDisplayNumber, int lastDisplayNumber) {
+  return getTimeString(firstDisplayNumber) + ":" + getTimeString(lastDisplayNumber);
 }
 
-String getSek() {
-  if (timeS < 10) {
-    if (timeS == 0) {
-      return String(0) + String(0); // 0 Sekunden
+String getTimeString(int number) {
+  if (number < 10) {
+    if (number == 0) {
+      return String(0) + String(0); // 00 Sekunden
     } else {
-      return "0" + String(timeS); // 05 Sekudnen z.B.
+      return String(0) + number; // 05 Sekunden
     }
   } else {
-    return String(timeS);
-  }
-}
-
-String getMin() {
-  if (timeM < 10) {
-    if (timeM == 0) {
-      return String(0) + String(0);
-    } else {
-      return String(0) + timeM;
-    }
-  } else {
-    return String(timeM);
+    return String(number);
   }
 }
 
@@ -193,47 +185,52 @@ void wecker() {
   lcd.setCursor(0, 1);
   lcd.print("00:00");
   delay(500);
+  int hours;
+  int minutes;
   while (!setBtnPressed()) {
     lcd.setCursor(0, 1);
-    lcd.print(getWeckerTime());
+    double result = analogRead(potentio);
+    double result2 = (result * 1.40664711);
+    hours = getHour(result2 / 60);
+    minutes = round(round(result2) % 60);
+    lcd.print(getTime(hours, minutes));
     if (menuBtnPressed()) {
-      timeS = 0;
-      timeM = 0;
       return;
     }
     delay(50);
   }
-  if (timeM == 0 && timeS != 0 || timeM != 0 && timeS == 0 || timeM != 0 && timeS != 0) {
-    do {
-      delay(1000);
-      timeS = timeS - 1;
-      if (timeS == 0) {
-        if (timeM != 0) {
-          timeM = timeM - 1;
-          timeS = 59;
-        }
-      }
-      lcd.setCursor(0, 1);
-      if (timeS == 0) {
-        lcd.print("00:00");
-      } else {
-        lcd.print(getTime());
-      }
-    } while (timeS != 0);
+  if (hours == 0 && minutes != 0 || hours != 0 && minutes == 0 || hours != 0 && minutes != 0) {
+    count(hours, minutes, 1000);
     end();
   }
+}
 
-  timeS = 0;
-  timeM = 0;
+void count(int firstDisplayNumber, int lastDisplayNumber, int delayCount) {
+  do {
+    delay(delayCount);
+    lastDisplayNumber = lastDisplayNumber - 1;
+    if (lastDisplayNumber == 0) {
+      if (firstDisplayNumber != 0) {
+        firstDisplayNumber = firstDisplayNumber - 1;
+        lastDisplayNumber = 59;
+      }
+    }
+    lcd.setCursor(0, 1);
+    if (lastDisplayNumber == 0) {
+      lcd.print("00:00");
+    } else {
+      lcd.print(getTime(firstDisplayNumber, lastDisplayNumber));
+    }
+  } while (lastDisplayNumber != 0);
 }
 
 void end() {
-  while (analogRead(stoppBtn) <= 0) {
+  while (!stopBtnPressed()) {
     lcd.setCursor(0, 1);
     lcd.print("00:00");
     tone(piezo, 262, 250);
     for (int i = 0; i < 5; i++) {
-      if (analogRead(stoppBtn) > 0) {
+      if (stopBtnPressed()) {
         return;
       }
       if (i == 2) {
@@ -244,14 +241,6 @@ void end() {
     }
   }
   return;
-}
-
-String getWeckerTime() {
-  double result = analogRead(potentio);
-  double result2 = (result * 1.40664711);
-  timeM = getHour(result2 / 60);
-  timeS = round(round(result2) % 60);
-  return getTime();
 }
 
 int getHour(double rawHourValue) {
@@ -268,38 +257,24 @@ void timer() {
   lcd.setCursor(0, 1);
   lcd.print("00:00");
   delay(500);
+  int minutes;
+  int seconds;
   while (!setBtnPressed()) {
     lcd.setCursor(0, 1);
-    lcd.print(getWeckerTime());
+    double result = analogRead(potentio);
+    double result2 = (result * 1.40664711);
+    minutes = getHour(result2 / 60);
+    seconds = round(round(result2) % 60);
+    lcd.print(getTime(minutes, seconds));
     if (menuBtnPressed()) {
-      timeS = 0;
-      timeM = 0;
       return;
     }
     delay(50);
   }
-  if (timeM == 0 && timeS != 0 || timeM != 0 && timeS == 0 || timeM != 0 && timeS != 0) {
-    do {
-      delay(1000);
-      timeS = timeS - 1;
-      if (timeS == 0) {
-        if (timeM != 0) {
-          timeM = timeM - 1;
-          timeS = 59;
-        }
-      }
-      lcd.setCursor(0, 1);
-      if (timeS == 0) {
-        lcd.print("00:00");
-      } else {
-        lcd.print(getTime());
-      }
-    } while (timeS != 0);
+  if (minutes == 0 && seconds != 0 || minutes != 0 && seconds == 0 || minutes != 0 && seconds != 0) {
+    count(minutes, seconds, 1000);
     end();
   }
-
-  timeS = 0;
-  timeM = 0;
 }
 
 boolean checkIfMenuIsPressed() {
