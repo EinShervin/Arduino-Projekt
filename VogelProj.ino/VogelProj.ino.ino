@@ -167,22 +167,24 @@ void wecker() {
     lcd.setCursor(0, 1);
     lcd.print(getWeckerTime());
     if (menuBtnPressed()) {
+      timeS = 0;
+      timeM = 0;
       return;
     }
     delay(50);
   }
-  if (timeM == 0 && timeS != 0 || timeM != 0 && timeS == 0) {
+  if (timeM == 0 && timeS != 0 || timeM != 0 && timeS == 0 || timeM != 0 && timeS != 0) {
     do {
       delay(1000);
       timeS = timeS - 1;
       if (timeS == 0) {
-        timeM = timeM - 1;
         if (timeM != 0) {
-          timeS == 59;
+          timeM = timeM - 1;
+          timeS = 59;
         }
       }
       lcd.setCursor(0, 1);
-      if(timeS == 0) {
+      if (timeS == 0) {
         lcd.print("00:00");
       } else {
         lcd.print(getTime());
@@ -200,15 +202,15 @@ void end() {
     lcd.setCursor(0, 1);
     lcd.print("00:00");
     tone(piezo, 262, 250);
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
       if (analogRead(stoppBtn) > 0) {
         return;
       }
-      if (i == 5) {
+      if (i == 2) {
         lcd.setCursor(0, 1);
         lcd.print("  :  ");
       }
-      delay(50);
+      delay(100);
     }
   }
   return;
@@ -234,9 +236,41 @@ void timer() {
   digitalWrite(ledTimer, HIGH);
   lcd.setCursor(0, 0);
   lcd.print("Zeit setzen");
-  if (checkIfMenuIsPressed()) {
-    return;
+  lcd.setCursor(0, 1);
+  lcd.print("00:00");
+  delay(500);
+  while (!setBtnPressed()) {
+    lcd.setCursor(0, 1);
+    lcd.print(getWeckerTime());
+    if (menuBtnPressed()) {
+      timeS = 0;
+      timeM = 0;
+      return;
+    }
+    delay(50);
   }
+  if (timeM == 0 && timeS != 0 || timeM != 0 && timeS == 0 || timeM != 0 && timeS != 0) {
+    do {
+      delay(1000);
+      timeS = timeS - 1;
+      if (timeS == 0) {
+        if (timeM != 0) {
+          timeM = timeM - 1;
+          timeS = 59;
+        }
+      }
+      lcd.setCursor(0, 1);
+      if (timeS == 0) {
+        lcd.print("00:00");
+      } else {
+        lcd.print(getTime());
+      }
+    } while (timeS != 0);
+    end();
+  }
+
+  timeS = 0;
+  timeM = 0;
 }
 
 boolean checkIfMenuIsPressed() {
