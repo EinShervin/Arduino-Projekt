@@ -37,8 +37,6 @@ void setup() {
   timeS = 0;
   timeM = 0;
 
-  nextMenu = false;
-
   menu = -1;
   lcd.begin(16, 2);
 }
@@ -95,13 +93,14 @@ void stoppuhr() {
     if (!canceld) {
       time();
       canceld = true;
+      lcd.setCursor(0, 0);
+      lcd.print("Entstand:");
       delay(500);
     }
     delay(100);
   }
   timeM = 0;
   timeS = 0;
-  nextMenu = true;
   lcd.clear();
   lcd.setCursor(0, 1);
   lcd.print("00:00");
@@ -169,7 +168,10 @@ void wecker() {
   lcd.setCursor(0, 1);
   lcd.print(getTime());
   while (!setBtnPressed()) {
-    
+    if (menuBtnPressed()) {
+      return;
+    }
+    delay(50);
   }
 }
 
