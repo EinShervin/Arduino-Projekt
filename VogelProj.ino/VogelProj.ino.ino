@@ -3,10 +3,11 @@
 const int rs = 12, en = 11, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-int piezo;
-int ledStoppuhr;
+int ledStopwatch;
 int ledTimer;
-int ledWecker;
+int ledAlarmClock;
+
+int piezo;
 int potentio;
 
 int menuBtn;
@@ -19,17 +20,18 @@ int timeM;
 int menu;
 
 void setup() {
-  // put your setup code here, to run once:
-  piezo = 6;
-  ledWecker = 7;
+  ledAlarmClock = 7;
   ledTimer = 9;
-  ledStoppuhr = 10;
+  ledStopwatch = 10;
+
+  piezo = 6;
   potentio = 0;
 
-  pinMode(piezo, OUTPUT);
-  pinMode(ledWecker, OUTPUT);
+  pinMode(ledAlarmClock, OUTPUT);
   pinMode(ledTimer, OUTPUT);
-  pinMode(ledStoppuhr, OUTPUT);
+  pinMode(ledStopwatch, OUTPUT);
+
+  pinMode(piezo, OUTPUT);
 
   menuBtn = 1;
   setBtn = 2;
@@ -37,23 +39,19 @@ void setup() {
 
   timeS = 0;
   timeM = 0;
+
   menu = -1;
+
   lcd.begin(16, 2);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   if (analogRead(menuBtn) > 0) {
-    menu = menu + 1;
-    if (menu == 3) {
-      menu = 0;
-    }
+    increaseMenuSelection();
   }
 
   switch (menu) {
     case 0:
-      digitalWrite(ledTimer, LOW);
-      digitalWrite(ledStoppuhr, HIGH);
       lcd.clear();
       stoppuhr();
       break;
@@ -68,6 +66,13 @@ void loop() {
   }
 }
 
+void increaseMenuSelection() {
+  menu = menu + 1;
+  if (menu == 3) {
+    menu = 0;
+  }
+}
+
 boolean menuBtnPressed() {
   return analogRead(menuBtn) != 0;
 }
@@ -76,8 +81,32 @@ boolean setBtnPressed() {
   return analogRead(setBtn) != 0;
 }
 
+void switchLed() {
+  switch (menu) {
+    case 0:
+      digitalWrite(ledStopwatch, HIGH);
+      digitalWrite(ledAlarmClock, LOW);
+      digitalWrite(ledTimer, LOW);
+      break;
+    case 1:
+      digitalWrite(ledStopwatch, LOW);
+      digitalWrite(ledAlarmClock, HIGH);
+      digitalWrite(ledTimer, LOW);
+      break;
+    case 2:
+      digitalWrite(ledStopwatch, LOW);
+      digitalWrite(ledAlarmClock, LOW);
+      digitalWrite(ledTimer, HIGH);
+      break;
+    default:
+      digitalWrite(ledTimer, LOW);
+      digitalWrite(ledAlarmClock, LOW);
+      digitalWrite(ledStopwatch, LOW);
+  }
+}
+
 void stoppuhr() {
-  lcd.clear();
+  switchLed();
   lcd.setCursor(0, 1);
   lcd.print("00:00");
   if (checkIfMenuIsPressed()) {
@@ -158,6 +187,7 @@ String getMin() {
 }
 
 void wecker() {
+  switchLed();
   lcd.setCursor(0, 0);
   lcd.print("Wecker");
   lcd.setCursor(0, 1);
@@ -232,8 +262,7 @@ int getHour(double rawHourValue) {
 }
 
 void timer() {
-  digitalWrite(ledStoppuhr, LOW);
-  digitalWrite(ledTimer, HIGH);
+  switchLed();
   lcd.setCursor(0, 0);
   lcd.print("Zeit setzen");
   lcd.setCursor(0, 1);
