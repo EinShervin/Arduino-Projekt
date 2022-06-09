@@ -7,6 +7,7 @@ int piezo;
 int ledStoppuhr;
 int ledTimer;
 int ledWecker;
+int potentio;
 
 int menuBtn;
 int setBtn;
@@ -16,7 +17,6 @@ int timeS;
 int timeM;
 
 int menu;
-boolean nextMenu;
 
 void setup() {
   // put your setup code here, to run once:
@@ -24,6 +24,7 @@ void setup() {
   ledWecker = 7;
   ledTimer = 9;
   ledStoppuhr = 10;
+  potentio = 0;
 
   pinMode(piezo, OUTPUT);
   pinMode(ledWecker, OUTPUT);
@@ -36,14 +37,13 @@ void setup() {
 
   timeS = 0;
   timeM = 0;
-
   menu = -1;
   lcd.begin(16, 2);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if (analogRead(menuBtn) > 0 || nextMenu) {
+  if (analogRead(menuBtn) > 0) {
     menu = menu + 1;
     if (menu == 3) {
       menu = 0;
@@ -62,10 +62,8 @@ void loop() {
       wecker();
       break;
     case 2:
-      // timer();
       lcd.clear();
-      lcd.setCursor(0, 1);
-      lcd.print("timer...");
+      timer();
       break;
   }
 }
@@ -82,11 +80,8 @@ void stoppuhr() {
   lcd.clear();
   lcd.setCursor(0, 1);
   lcd.print("00:00");
-  while (!setBtnPressed()) {
-    if (menuBtnPressed()) {
-      return;
-    }
-    delay(20);
+  if (checkIfMenuIsPressed()) {
+    return;
   }
   boolean canceld = false;
   while (analogRead(stoppBtn) <= 0) {
@@ -166,13 +161,72 @@ void wecker() {
   lcd.setCursor(0, 0);
   lcd.print("Wecker");
   lcd.setCursor(0, 1);
-  lcd.print(getTime());
+  lcd.print("00:00");
+  delay(500);
   while (!setBtnPressed()) {
+    lcd.setCursor(0, 1);
+    lcd.print(getWeckerTime());
     if (menuBtnPressed()) {
       return;
     }
     delay(50);
   }
+  if (timeM == 0 && timeS != 0 || timeM != 0 && timeS == 0) {
+    do {
+      delay(1000);
+      timeS = timeS - 1;
+      if (timeS == 0) {
+        timeM = timeM - 1;
+        if (timeM != 0) {
+          timeS == 59;
+        }
+      }
+      lcd.setCursor(0, 1);
+      if(timeS == 0) {
+        lcd.print("00:00");
+      } else {
+        lcd.print(getTime());
+      }
+    } while (timeS != 0);
+    end();
+  }
+
+  timeS = 0;
+  timeM = 0;
+}
+
+void end() {
+  while (analogRead(stoppBtn) <= 0) {
+    lcd.setCursor(0, 1);
+    lcd.print("00:00");
+    tone(piezo, 262, 250);
+    for (int i = 0; i < 10; i++) {
+      if (analogRead(stoppBtn) > 0) {
+        return;
+      }
+      if (i == 5) {
+        lcd.setCursor(0, 1);
+        lcd.print("  :  ");
+      }
+      delay(50);
+    }
+  }
+  return;
+}
+
+String getWeckerTime() {
+  double result = analogRead(potentio);
+  double result2 = (result * 1.40664711);
+  timeM = getHour(result2 / 60);
+  timeS = round(round(result2) % 60);
+  return getTime();
+}
+
+int getHour(double rawHourValue) {
+  for (int i = 0; i < 24; i++)
+    if (rawHourValue < i + 1) {
+      return i;
+    }
 }
 
 void timer() {
@@ -180,4 +234,18 @@ void timer() {
   digitalWrite(ledTimer, HIGH);
   lcd.setCursor(0, 0);
   lcd.print("Zeit setzen");
+  if (checkIfMenuIsPressed()) {
+    return;
+  }
+}
+
+boolean checkIfMenuIsPressed() {
+  delay(500);
+  while (!setBtnPressed()) {
+    if (menuBtnPressed()) {
+      return true;
+    }
+    delay(20);
+  }
+  return false;
 }
