@@ -18,7 +18,7 @@ int menuBtn;
 int setBtn;
 int stopBtn;
 
-// Selektiertes Menü
+// Selektiertes Menü {0 = stoppuhr, 1 = wecker, 2 = timer}
 int menu;
 
 void setup() {
@@ -52,11 +52,11 @@ void loop() {
   switch (menu) {
     case 0:
       lcd.clear();
-      stoppuhr();
+      Stopwatch();
       break;
     case 1:
       lcd.clear();
-      wecker();
+      alarmClock();
       break;
     case 2:
       lcd.clear();
@@ -108,17 +108,16 @@ void switchLed() {
   }
 }
 
-void stoppuhr() {
+void Stopwatch() {
   switchLed();
-  lcd.setCursor(0, 1);
-  lcd.print("00:00");
+  printStoppuhrInterface();
   if (checkIfBackToMenu()) {
     return;
   }
   boolean canceld = false;
   while (!stopBtnPressed()) {
     if (!canceld) {
-      time();
+      runStopwatch();
       canceld = true;
       lcd.setCursor(0, 0);
       lcd.print("Entstand:");
@@ -126,34 +125,31 @@ void stoppuhr() {
     }
     delay(100);
   }
-  lcd.clear();
+}
+
+void printStoppuhrInterface() {
   lcd.setCursor(0, 1);
   lcd.print("00:00");
 }
 
-void time() {
-  int intermediateTimes = 0;
+void runStopwatch() {
+  int intermediateTimesCount = 0;
   int seconds = 0;
   int minutes = 0;
   while (!stopBtnPressed()) {
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) { // 1s Loop
       if (stopBtnPressed()) {
         return;
-      } else if (setBtnPressed() && (seconds > 0 || minutes > 0) && intermediateTimes < 2) {
-        if (intermediateTimes == 0) {
-          lcd.setCursor(10, 0);
-        } else if (intermediateTimes == 1) {
-          lcd.setCursor(10, 1);
-        }
-        lcd.print(getTime(minutes, seconds));
-        intermediateTimes = intermediateTimes + 1;
+      } else if (shouldSaveIntermediateTime(seconds, minutes, intermediateTimesCount)) {
+        printIntermediateTime(getTime(minutes, seconds), intermediateTimesCount);
+        intermediateTimesCount = intermediateTimesCount + 1;
       }
       delay(100);
     }
     lcd.setCursor(0, 1);
     seconds++;
-    if (seconds % 60 == 0) {
-      minutes = minutes + 1;
+    if (isNewMinute(seconds)) {
+      minutes++;
       seconds = 0;
     }
 
@@ -161,34 +157,32 @@ void time() {
   }
 }
 
-String getTime(int firstDisplayNumber, int lastDisplayNumber) {
-  return getTimeString(firstDisplayNumber) + ":" + getTimeString(lastDisplayNumber);
+boolean isNewMinute(int seconds) {
+  return seconds % 60 == 0;
 }
 
-String getTimeString(int number) {
-  if (number < 10) {
-    if (number == 0) {
-      return String(0) + String(0); // 00 Sekunden
-    } else {
-      return String(0) + number; // 05 Sekunden
-    }
-  } else {
-    return String(number);
+boolean shouldSaveIntermediateTime(int seconds, int minutes, int intermediateTimesCount) {
+  return setBtnPressed() && (seconds > 0 || minutes > 0) && intermediateTimesCount < 2;
+}
+
+void printIntermediateTime(String time, int intermediateTimesCount) {
+  if (intermediateTimesCount == 0) {
+    lcd.setCursor(10, 0);
+  } else if (intermediateTimesCount == 1) {
+    lcd.setCursor(10, 1);
   }
+  lcd.print(time);
 }
 
-void wecker() {
+void alarmClock() {
   switchLed();
-  lcd.setCursor(0, 0);
-  lcd.print("Wecker");
-  lcd.setCursor(0, 1);
-  lcd.print("00:00");
-  delay(500);
+  printAlarmClockInterface();
   int hours;
   int minutes;
+  delay(300); // Hier wird gewartet, sonst wird das Menü direkt wieder gewechselt (Menü Button pressed)
   while (!setBtnPressed()) {
     lcd.setCursor(0, 1);
-    hours = getHour(getPotentioValue() / 60);
+    hours = getHours(getPotentioValue() / 60);
     minutes = round(round(getPotentioValue()) % 60);
     lcd.print(getTime(hours, minutes));
     if (menuBtnPressed()) {
@@ -196,13 +190,28 @@ void wecker() {
     }
     delay(50);
   }
-  if (hours == 0 && minutes != 0 || hours != 0 && minutes == 0 || hours != 0 && minutes != 0) {
-    count(hours, minutes, 1000);
-    end();
+  if (isValidTime(hours, minutes)) {
+    clock(hours, minutes, 1000);
+    alarm();
   }
 }
 
-void count(int firstDisplayNumber, int lastDisplayNumber, int delayCount) {
+void printAlarmClockInterface() {
+  lcd.setCursor(0, 0);
+  lcd.print("Wecker");
+  lcd.setCursor(0, 1);
+  lcd.print("00:00");
+}
+
+int getHours(double rawHoursValue) {
+  for (int i = 0; i < 24; i++) {
+    if (rawHoursValue < i + 1) {
+      return i;
+    }
+  }
+}
+
+void clock(int firstDisplayNumber, int lastDisplayNumber, int delayCount) {
   do {
     delay(delayCount);
     lastDisplayNumber = lastDisplayNumber - 1;
@@ -221,7 +230,7 @@ void count(int firstDisplayNumber, int lastDisplayNumber, int delayCount) {
   } while (lastDisplayNumber != 0);
 }
 
-void end() {
+void alarm() {
   while (!stopBtnPressed()) {
     lcd.setCursor(0, 1);
     lcd.print("00:00");
@@ -232,37 +241,31 @@ void end() {
       }
       if (i == 2) {
         lcd.setCursor(0, 1);
-        lcd.print(" ");
-        lcd.print(" ");
-        lcd.print(":");
-        lcd.print(" ");
-        lcd.print(" ");
-        }
+        printEmptyTime();
+      }
       delay(100);
     }
   }
   return;
 }
 
-int getHour(double rawHourValue) {
-  for (int i = 0; i < 24; i++)
-    if (rawHourValue < i + 1) {
-      return i;
-    }
+void printEmptyTime() {
+  lcd.print(" ");
+  lcd.print(" ");
+  lcd.print(":");
+  lcd.print(" ");
+  lcd.print(" ");
 }
 
 void timer() {
   switchLed();
-  lcd.setCursor(0, 0);
-  lcd.print("Zeit setzen");
-  lcd.setCursor(0, 1);
-  lcd.print("00:00");
+  printTimerInterface();
   int minutes;
   int seconds;
-  delay(500);
+  delay(300); // Hier wird gewartet, sonst wird das Menü direkt wieder gewechselt (Menü Button pressed)
   while (!setBtnPressed()) {
     lcd.setCursor(0, 1);
-    minutes = getHour(getPotentioValue() / 60);
+    minutes = getMinutes(getPotentioValue() / 60);
     seconds = round(round(getPotentioValue()) % 60);
     lcd.print(getTime(minutes, seconds));
     if (menuBtnPressed()) {
@@ -270,19 +273,53 @@ void timer() {
     }
     delay(50);
   }
-  if (minutes == 0 && seconds != 0 || minutes != 0 && seconds == 0 || minutes != 0 && seconds != 0) {
-    count(minutes, seconds, 1000);
-    end();
+  if (isValidTime(minutes, seconds)) {
+    clock(minutes, seconds, 1000);
+    alarm();
   }
+}
+
+int getMinutes(int rawMinutesValue) {
+  for (int i = 0; i < 60; i++) {
+    if (rawMinutesValue < i + 1) {
+      return i;
+    }
+  }
+}
+
+void printTimerInterface() {
+  lcd.setCursor(0, 0);
+  lcd.print("Timer");
+  lcd.setCursor(0, 1);
+  lcd.print("00:00");
 }
 
 double getPotentioValue() {
   // 24 Stunden * 60 Minuten - 1 sind 1439 Minuten, und um das auf die Auslesung des Potentiometers anzupassen wird 1439 durch 1023 geteilt
   return (analogRead(potentio) * 1.40664711);
 }
+String getTime(int firstDisplayNumber, int lastDisplayNumber) {
+  return getTimeString(firstDisplayNumber) + ":" + getTimeString(lastDisplayNumber);
+}
+
+boolean isValidTime(int num1, int num2) {
+  return num1 == 0 && num2 != 0 || num1 != 0 && num2 == 0 || num1 != 0 && num2 != 0;
+}
+
+String getTimeString(int number) {
+  if (number < 10) {
+    if (number == 0) {
+      return String(0) + String(0); // 00
+    } else {
+      return String(0) + number; // 05
+    }
+  } else {
+    return String(number); // 10
+  }
+}
 
 boolean checkIfBackToMenu() {
-  delay(500);
+  delay(300); // Hier wird gewartet, sonst wird das Menü direkt wieder gewechselt (Menü Button pressed)
   while (!setBtnPressed()) {
     if (menuBtnPressed()) {
       return true;
