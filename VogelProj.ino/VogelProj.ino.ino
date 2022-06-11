@@ -249,26 +249,28 @@ void timer() {
     }
     delay(50);
   }
-  if (isTimeNotZero(minutes, seconds)) {
-    runTimer(minutes, seconds);
-    alarm();
+  if (isTimeZero(minutes, seconds)) {
+    return;
   }
+  runTimer(minutes, seconds);
+  alarm(true);
 }
 
 void runTimer(int minutes, int seconds) {
-  while (true) {
+  do {
     delay(1000);
     seconds--;
     if (seconds == -1) {
-      if (minutes == 0) {
-        return;
+      if (minutes != 0) {
+        minutes--;
+        seconds = 59;
       }
-      minutes--;
-      seconds = 59;
     }
-    lcd.setCursor(0, 1);
-    lcd.print(getTime(minutes, seconds));
-  }
+    if (seconds != -1) {
+      lcd.setCursor(0, 1);
+      lcd.print(getTime(minutes, seconds));
+    }
+  } while (seconds != -1);
 }
 
 int getMinutes(int rawMinutesValue) {
@@ -279,16 +281,32 @@ int getMinutes(int rawMinutesValue) {
   }
 }
 
-void alarm() {
+void alarm(boolean animate) {
   while (!stopBtnPressed()) {
+    if (animate) {
+      printZeroTime();
+    }
     tone(piezo, 262, 250);
     for (int i = 0; i < 5; i++) {
       if (stopBtnPressed()) {
         return;
       }
+      if (i == 2 && animate) {
+        printEmptyTime();
+      }
       delay(100);
     }
   }
+}
+
+void printEmptyTime() {
+  lcd.setCursor(0, 1);
+  lcd.print("  :  ");
+}
+
+void printZeroTime() {
+  lcd.setCursor(0, 1);
+  lcd.print(String(0) + String(0) + ":" + String(0) + String(0));
 }
 
 void printTimerInterface() {
@@ -306,8 +324,8 @@ String getTime(int firstDisplayNumber, int lastDisplayNumber) {
   return getTimeString(firstDisplayNumber) + ":" + getTimeString(lastDisplayNumber);
 }
 
-boolean isTimeNotZero(int num1, int num2) {
-  return num1 == 0 && num2 != 0 || num1 != 0 && num2 == 0 || num1 != 0 && num2 != 0;
+boolean isTimeZero(int num1, int num2) {
+  return num1 == 0 && num2 == 0;
 }
 
 String getTimeString(int number) {
