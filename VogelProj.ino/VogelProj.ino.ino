@@ -66,7 +66,7 @@ void loop() {
 }
 
 void increaseMenuSelection() {
-  menu = menu + 1;
+  menu++;
   if (menu == 3) {
     menu = 0;
   }
@@ -190,10 +190,32 @@ void alarmClock() {
     }
     delay(50);
   }
-  if (isValidTime(hours, minutes)) {
-    clock(hours, minutes, 1000);
-    alarm();
-  }
+  printCurrentTime();
+  clock(12, 0, getTime(hours, minutes));
+  alarm();
+}
+
+void clock(int hours, int minutes, String endTime) {
+  do {
+    delay(60000);
+    minutes++;
+    if (minutes == 60) {
+      if (hours == 23) {
+        hours = 0;
+        minutes = 0;
+      } else {
+        hours++;;
+        minutes = 0;
+      }
+    }
+    lcd.setCursor(11, 0);
+    lcd.print(getTime(hours, minutes));
+  } while (!getTime(hours, minutes).equals(endTime));
+}
+
+void printCurrentTime() {
+  lcd.setCursor(11, 0);
+  lcd.print("12:00");
 }
 
 void printAlarmClockInterface() {
@@ -209,52 +231,6 @@ int getHours(double rawHoursValue) {
       return i;
     }
   }
-}
-
-void clock(int firstDisplayNumber, int lastDisplayNumber, int delayCount) {
-  do {
-    delay(delayCount);
-    lastDisplayNumber = lastDisplayNumber - 1;
-    if (lastDisplayNumber == 0) {
-      if (firstDisplayNumber != 0) {
-        firstDisplayNumber = firstDisplayNumber - 1;
-        lastDisplayNumber = 59;
-      }
-    }
-    lcd.setCursor(0, 1);
-    if (lastDisplayNumber == 0) {
-      lcd.print("00:00");
-    } else {
-      lcd.print(getTime(firstDisplayNumber, lastDisplayNumber));
-    }
-  } while (lastDisplayNumber != 0);
-}
-
-void alarm() {
-  while (!stopBtnPressed()) {
-    lcd.setCursor(0, 1);
-    lcd.print("00:00");
-    tone(piezo, 262, 250);
-    for (int i = 0; i < 5; i++) {
-      if (stopBtnPressed()) {
-        return;
-      }
-      if (i == 2) {
-        lcd.setCursor(0, 1);
-        printEmptyTime();
-      }
-      delay(100);
-    }
-  }
-  return;
-}
-
-void printEmptyTime() {
-  lcd.print(" ");
-  lcd.print(" ");
-  lcd.print(":");
-  lcd.print(" ");
-  lcd.print(" ");
 }
 
 void timer() {
@@ -273,9 +249,25 @@ void timer() {
     }
     delay(50);
   }
-  if (isValidTime(minutes, seconds)) {
-    clock(minutes, seconds, 1000);
+  if (isTimeNotZero(minutes, seconds)) {
+    runTimer(minutes, seconds);
     alarm();
+  }
+}
+
+void runTimer(int minutes, int seconds) {
+  while (true) {
+    delay(1000);
+    seconds--;
+    if (seconds == -1) {
+      if (minutes == 0) {
+        return;
+      }
+      minutes--;
+      seconds = 59;
+    }
+    lcd.setCursor(0, 1);
+    lcd.print(getTime(minutes, seconds));
   }
 }
 
@@ -283,6 +275,18 @@ int getMinutes(int rawMinutesValue) {
   for (int i = 0; i < 60; i++) {
     if (rawMinutesValue < i + 1) {
       return i;
+    }
+  }
+}
+
+void alarm() {
+  while (!stopBtnPressed()) {
+    tone(piezo, 262, 250);
+    for (int i = 0; i < 5; i++) {
+      if (stopBtnPressed()) {
+        return;
+      }
+      delay(100);
     }
   }
 }
@@ -302,7 +306,7 @@ String getTime(int firstDisplayNumber, int lastDisplayNumber) {
   return getTimeString(firstDisplayNumber) + ":" + getTimeString(lastDisplayNumber);
 }
 
-boolean isValidTime(int num1, int num2) {
+boolean isTimeNotZero(int num1, int num2) {
   return num1 == 0 && num2 != 0 || num1 != 0 && num2 == 0 || num1 != 0 && num2 != 0;
 }
 
